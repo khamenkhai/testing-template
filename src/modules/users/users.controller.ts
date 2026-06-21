@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Patch,
-} from '@nestjs/common';
+import { Controller, Body, Param, UseGuards, Patch } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
   ApiOperation,
@@ -16,6 +9,9 @@ import {
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
+import { ApiSwaggerSingleResponse } from 'src/common/decorators/api-response.decorator';
+import type { SingleResponse } from 'src/common/interfaces/api-response.interface';
+import { User } from 'src/database/generated/prisma/client';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -25,10 +21,14 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Assign a role to a user' })
+  @ApiSwaggerSingleResponse(Object)
   @Patch(':id/role')
   @ApiParam({ name: 'id', description: 'User ID' })
   @ResponseMessage('Role assigned successfully')
-  async assignRole(@Param('id') userId: string, @Body() dto: AssignRoleDto) {
+  async assignRole(
+    @Param('id') userId: string,
+    @Body() dto: AssignRoleDto,
+  ): Promise<SingleResponse<User>> {
     return await this.usersService.assignRole(userId, dto.roleId);
   }
 }

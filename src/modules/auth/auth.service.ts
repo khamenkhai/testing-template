@@ -10,6 +10,7 @@ import { JwtPayload } from './types/jwt-payload';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import { SingleResponse } from 'src/common/interfaces/api-response.interface';
 
 @Injectable()
 export class AuthService {
@@ -115,12 +116,14 @@ export class AuthService {
     await this.usersService.updateRefreshToken(hashedRefreshToken, user.id);
 
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
+      data: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
       },
     };
   }
@@ -189,15 +192,18 @@ export class AuthService {
       );
 
       return {
-        access_token: newAccessToken,
-        refresh_token: newRefreshToken,
+        data: {
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken,
+        },
       };
     } catch (e) {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async logout(userId: string) {
-    return this.usersService.update(userId, { refreshToken: '' });
+  async logout(userId: string): Promise<SingleResponse<{ message: string }>> {
+    await this.usersService.update(userId, { refreshToken: '' });
+    return { data: { message: 'Logged out successfully' } };
   }
 }

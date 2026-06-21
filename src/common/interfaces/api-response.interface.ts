@@ -1,18 +1,20 @@
-export interface ApiResponse<T = unknown> {
+export interface SingleResponse<T> {
   data: T;
 }
 
-export type SingleResponse<T> = ApiResponse<T>;
+export interface ListResponse<T> {
+  data: T[];
+}
 
-export type ListResponse<T> = ApiResponse<T[]>;
+export interface PaginationMeta {
+  totalItems: number;
+  itemCount: number;
+  itemsPerPage: number;
+  totalPages: number;
+  currentPage: number;
+}
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  meta: {
-    totalItems: number;
-    itemCount: number;
-    itemsPerPage: number;
-    totalPages: number;
-    currentPage: number;
-  };
+  data: T[];
+  meta: PaginationMeta;
 }

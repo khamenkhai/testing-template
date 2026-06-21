@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import {
+  SingleResponse,
+  ListResponse,
+} from 'src/common/interfaces/api-response.interface';
 import { CreateRoleDto, UpdateRoleDto } from './dto/roles.dto';
+import { Role, Permission } from 'src/database/generated/prisma/client';
 
 @Injectable()
 export class RolesService {
@@ -37,7 +42,7 @@ export class RolesService {
       }
     }
 
-    return await this.prisma.role.create({
+    const role = await this.prisma.role.create({
       data: {
         name: dto.name,
         rolePermissions: {
@@ -54,13 +59,14 @@ export class RolesService {
         },
       },
     });
+    return { data: role };
   }
 
-  async updateRole(id: string, dto: UpdateRoleDto) {
+  async updateRole(id: string, dto: UpdateRoleDto): Promise<SingleResponse<Role>> {
     const role = await this.prisma.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException(`Role with ID ${id} not found`);
 
-    return await this.prisma.role.update({
+    const updated = await this.prisma.role.update({
       where: { id },
       data: {
         name: dto.name,
@@ -81,10 +87,11 @@ export class RolesService {
         },
       },
     });
+    return { data: updated };
   }
 
-  async findAllRoles() {
-    return await this.prisma.role.findMany({
+  async findAllRoles(): Promise<ListResponse<Role>> {
+    const roles = await this.prisma.role.findMany({
       include: {
         rolePermissions: {
           include: {
@@ -93,9 +100,10 @@ export class RolesService {
         },
       },
     });
+    return { data: roles };
   }
 
-  async findOneRole(id: string) {
+  async findOneRole(id: string): Promise<SingleResponse<Role>> {
     const role = await this.prisma.role.findUnique({
       where: { id },
       include: {
@@ -107,20 +115,21 @@ export class RolesService {
       },
     });
     if (!role) throw new NotFoundException(`Role with ID ${id} not found`);
-    return role;
+    return { data: role };
   }
 
-  async deleteRole(id: string): Promise<boolean> {
+  async deleteRole(id: string): Promise<SingleResponse<{ success: boolean }>> {
     try {
       await this.prisma.role.delete({ where: { id } });
-      return true;
+      return { data: { success: true } };
     } catch (error) {
-      return false;
+      return { data: { success: false } };
     }
   }
 
-  async findAllPermissions() {
-    return await this.prisma.permission.findMany();
+  async findAllPermissions(): Promise<ListResponse<Permission>> {
+    const permissions = await this.prisma.permission.findMany();
+    return { data: permissions };
   }
 
   async deletePermission(id: string): Promise<boolean> {
@@ -132,7 +141,10 @@ export class RolesService {
     }
   }
 
-  async removePermissionFromRole(roleId: string, permissionId: string) {
+  async removePermissionFromRole(
+    roleId: string,
+    permissionId: string,
+  ): Promise<SingleResponse<{ removed: boolean }>> {
     try {
       const result = await this.prisma.rolePermission.deleteMany({
         where: {
@@ -140,9 +152,9 @@ export class RolesService {
           permissionId: permissionId,
         },
       });
-      return result.count > 0;
+      return { data: { removed: result.count > 0 } };
     } catch (error) {
-      return false;
+      return { data: { removed: false } };
     }
   }
 }
