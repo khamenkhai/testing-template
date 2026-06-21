@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>POS DB Schema - Variants Architecture</title>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark"
+    });
+  </script>
+
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .box {
+      background: #1a1a1a;
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>POS System - Variant-Based Architecture (Restaurant + Retail Hybrid)</h1>
+
+<div class="box">
+<pre class="mermaid">
+erDiagram
+
+  ORGANIZATIONS ||--o{ BRANCHES : has
+  BRANCHES ||--o{ USERS : employs
+  BRANCHES ||--o{ TABLES : contains
+  BRANCHES ||--o{ CATEGORIES : has
+  BRANCHES ||--o{ ORDERS : processes
+  BRANCHES ||--o{ AUDIT_LOGS : tracks
+  BRANCHES ||--o{ SHIFTS : runs
+  BRANCHES ||--o{ EXPENSES : records
+
+  CATEGORIES ||--o{ MENU_ITEMS : groups
+  MENU_ITEMS ||--o{ MENU_ITEM_VARIANTS : has
+
+  MENU_ITEM_VARIANTS ||--o{ ORDER_ITEMS : sold_as
+
+  USERS ||--o{ ORDERS : creates
+  USERS ||--o{ SHIFTS : works
+  USERS ||--o{ AUDIT_LOGS : generates
+  USERS ||--o{ EXPENSES : records
+
+  TABLES ||--o{ ORDERS : assigned_to
+
+  ORDERS ||--o{ ORDER_ITEMS : contains
+  ORDERS ||--o{ PAYMENTS : paid_by
+  ORDERS ||--o{ KITCHEN_TICKETS : sends
+
+  MENU_ITEM_VARIANTS ||--o{ PRICE_CHANGE_HISTORIES : tracks
+
+  ORGANIZATIONS {
+    int id PK
+    string name
+    string subdomain
+    timestamp created_at
+  }
+
+  BRANCHES {
+    int id PK
+    int organization_id FK
+    string name
+    string address
+    string phone
+    string business_type "restaurant|retail|hybrid"
+    timestamp created_at
+  }
+
+  USERS {
+    int id PK
+    int organization_id FK
+    string name
+    string email
+    string password_hash
+    string pin_hash
+    string role
+    json login_methods
+    timestamp created_at
+  }
+
+  TABLES {
+    int id PK
+    int branch_id FK
+    string table_number
+    int seating_capacity
+    string status
+  }
+
+  CATEGORIES {
+    int id PK
+    int branch_id FK
+    int organization_id FK
+    string name
+  }
+
+  MENU_ITEMS {
+    int id PK
+    int category_id FK
+    string name
+    string description
+    boolean is_available
+  }
+
+  MENU_ITEM_VARIANTS {
+    int id PK
+    int menu_item_id FK
+    string name
+    decimal price
+    boolean is_default
+    string sku
+  }
+
+  PRICE_CHANGE_HISTORIES {
+    int id PK
+    int variant_id FK
+    decimal old_price
+    decimal new_price
+    timestamp changed_at
+    int changed_by FK
+  }
+
+  ORDERS {
+    int id PK
+    int branch_id FK
+    int table_id FK
+    int waiter_id FK
+    string order_type
+    string status
+    decimal total_amount
+    timestamp created_at
+  }
+
+  ORDER_ITEMS {
+    int id PK
+    int order_id FK
+    int variant_id FK
+    int quantity
+    decimal unit_price
+    string notes
+  }
+
+  PAYMENTS {
+    int id PK
+    int order_id FK
+    string payment_method
+    decimal amount_paid
+    string transaction_status
+    timestamp completed_at
+  }
+
+  AUDIT_LOGS {
+    bigint id PK
+    int organization_id FK
+    int branch_id FK
+    int user_id FK
+    string action
+    string entity_type
+    int entity_id
+    json old_values
+    json new_values
+    string ip_address
+    text user_agent
+    timestamp created_at
+  }
+
+  KITCHEN_TICKETS {
+    int id PK
+    int order_id FK
+    string status
+    timestamp created_at
+  }
+
+  SHIFTS {
+    int id PK
+    int user_id FK
+    int branch_id FK
+    timestamp started_at
+    timestamp ended_at
+    decimal opening_cash
+    decimal closing_cash
+  }
+
+  EXPENSES {
+    int id PK
+    int branch_id FK
+    string title
+    decimal amount
+    text description
+    int created_by FK
+    timestamp created_at
+  }
+
+</pre>
+</div>
+
+</body>
+</html>

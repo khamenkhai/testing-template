@@ -1,4 +1,3 @@
-// src/modules/todo/todo.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -6,7 +5,10 @@ import { UploadService } from '../upload/upload.service';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
 import { sanitizeFileName } from 'src/common/config/multer.config';
-import { PaginatedResponse } from 'src/common/interfaces/api-response.interface';
+import {
+  PaginatedResponse,
+  SingleResponse,
+} from 'src/common/interfaces/api-response.interface';
 import { Todo, User } from 'src/database/generated/prisma/client';
 
 @Injectable()
@@ -16,20 +18,42 @@ export class TodoService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async create(createTodoDto: CreateTodoDto, user: User): Promise<Todo> {
-    return this.prisma.todo.create({
+  private async getTodoEntity(id: string, userId: string): Promise<Todo> {
+    const todo = await this.prisma.todo.findFirst({
+      where: { id, userId },
+    });
+
+    if (!todo) {
+      throw new NotFoundException(`Todo with ID ${id} not found`);
+    }
+
+    if (todo.image) {
+      const presignedUrl = await this.uploadService.getPresignedUrl(todo.image);
+      return { ...todo, image: presignedUrl };
+    }
+
+    return todo;
+  }
+
+  async create(
+    createTodoDto: CreateTodoDto,
+    user: User,
+  ): Promise<SingleResponse<Todo>> {
+    const todo = await this.prisma.todo.create({
       data: {
         ...createTodoDto,
         user: { connect: { id: user.id } },
       },
     });
+
+    return { data: todo };
   }
 
   async createWithImage(
     createTodoDto: CreateTodoDto,
     user: User,
     file?: Express.Multer.File,
-  ): Promise<Todo> {
+  ): Promise<SingleResponse<Todo>> {
     let imageKey: string = '';
 
     if (file) {
@@ -44,15 +68,14 @@ export class TodoService {
       },
     });
 
-    // Generate presigned URL for the response
     if (savedTodo.image) {
       const presignedUrl = await this.uploadService.getPresignedUrl(
         savedTodo.image,
       );
-      return { ...savedTodo, image: presignedUrl };
+      return { data: { ...savedTodo, image: presignedUrl } };
     }
 
-    return savedTodo;
+    return { data: savedTodo };
   }
 
   async findAll(
@@ -89,7 +112,7 @@ export class TodoService {
     const totalPages = Math.ceil(totalItems / limit);
 
     return {
-      items: itemsWithUrls,
+      data: itemsWithUrls,
       meta: {
         totalItems,
         itemCount: itemsWithUrls.length,
@@ -100,44 +123,44 @@ export class TodoService {
     };
   }
 
-  async findOne(id: string, userId: string): Promise<Todo> {
-    const todo = await this.prisma.todo.findFirst({
-      where: { id, userId },
-    });
-
-    if (!todo) {
-      throw new NotFoundException(`Todo with ID ${id} not found`);
-    }
-
-    if (todo.image) {
-      const presignedUrl = await this.uploadService.getPresignedUrl(todo.image);
-      return { ...todo, image: presignedUrl };
-    }
-
-    return todo;
+  async findOne(id: string, userId: string): Promise<SingleResponse<Todo>> {
+    const todo = await this.getTodoEntity(id, userId);
+    return { data: todo };
   }
 
   async update(
     id: string,
     updateTodoDto: UpdateTodoDto,
     userId: string,
-  ): Promise<Todo> {
-    const todo = await this.findOne(id, userId);
-    if (!todo) {
-      throw new NotFoundException(`Todo with ID ${id} not found`);
-    }
+  ): Promise<SingleResponse<Todo>> {
+    await this.getTodoEntity(id, userId);
 
-    return this.prisma.todo.update({
+    const updatedTodo = await this.prisma.todo.update({
       where: { id },
       data: updateTodoDto,
     });
+
+    if (updatedTodo.image) {
+      const presignedUrl = await this.uploadService.getPresignedUrl(
+        updatedTodo.image,
+      );
+      return { data: { ...updatedTodo, image: presignedUrl } };
+    }
+
+    return { data: updatedTodo };
   }
 
-  async remove(id: string, userId: string): Promise<void> {
-    await this.findOne(id, userId);
+  async remove(
+    id: string,
+    userId: string,
+  ): Promise<SingleResponse<{ id: string; success: boolean }>> {
+    await this.getTodoEntity(id, userId);
+
     await this.prisma.todo.delete({
       where: { id },
     });
+
+    return { data: { id, success: true } };
   }
 
   private async uploadImage(file: Express.Multer.File): Promise<string> {
