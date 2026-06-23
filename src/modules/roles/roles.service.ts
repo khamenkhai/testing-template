@@ -10,12 +10,46 @@ import {
 } from 'src/common/interfaces/api-response.interface';
 import { CreateRoleDto, UpdateRoleDto } from './dto/roles.dto';
 import { Role, Permission } from 'src/database/generated/prisma/client';
+import {
+  PermissionResponseDto,
+  RoleResponseDto,
+} from 'src/common/dto/response.dto';
+
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+type RoleWithPermissions = Role & {
+  rolePermissions?: Array<{
+    permission: Permission;
+  }>;
+};
 
 @Injectable()
 export class RolesService {
   constructor(private prisma: PrismaService) {}
 
-  async createRole(dto: CreateRoleDto) {
+  private mapPermission(permission: Permission): PermissionResponseDto {
+    return {
+      id: permission.id,
+      name: permission.name,
+      description: permission.description,
+    };
+  }
+
+  private mapRole(role: RoleWithPermissions): RoleResponseDto {
+    const permissions =
+      role.rolePermissions?.map((rolePermission) =>
+        this.mapPermission(rolePermission.permission),
+      ) ?? [];
+
+    return {
+      id: role.id,
+      name: role.name,
+      permissions,
+    };
+  }
+
+  async createRole(
+    dto: CreateRoleDto,
+  ): Promise<SingleResponse<RoleResponseDto>> {
     const existingRole = await this.prisma.role.findUnique({
       where: { name: dto.name },
     });
@@ -59,10 +93,13 @@ export class RolesService {
         },
       },
     });
-    return { data: role };
+    return { data: this.mapRole(role) };
   }
 
-  async updateRole(id: string, dto: UpdateRoleDto): Promise<SingleResponse<Role>> {
+  async updateRole(
+    id: string,
+    dto: UpdateRoleDto,
+  ): Promise<SingleResponse<RoleResponseDto>> {
     const role = await this.prisma.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException(`Role with ID ${id} not found`);
 
@@ -87,10 +124,10 @@ export class RolesService {
         },
       },
     });
-    return { data: updated };
+    return { data: this.mapRole(updated) };
   }
 
-  async findAllRoles(): Promise<ListResponse<Role>> {
+  async findAllRoles(): Promise<ListResponse<RoleResponseDto>> {
     const roles = await this.prisma.role.findMany({
       include: {
         rolePermissions: {
@@ -100,10 +137,10 @@ export class RolesService {
         },
       },
     });
-    return { data: roles };
+    return { data: roles.map((role) => this.mapRole(role)) };
   }
 
-  async findOneRole(id: string): Promise<SingleResponse<Role>> {
+  async findOneRole(id: string): Promise<SingleResponse<RoleResponseDto>> {
     const role = await this.prisma.role.findUnique({
       where: { id },
       include: {
@@ -115,16 +152,28 @@ export class RolesService {
       },
     });
     if (!role) throw new NotFoundException(`Role with ID ${id} not found`);
-    return { data: role };
+    return { data: this.mapRole(role) };
   }
 
-  async deleteRole(id: string): Promise<SingleResponse<{ success: boolean }>> {
-    try {
-      await this.prisma.role.delete({ where: { id } });
-      return { data: { success: true } };
-    } catch (error) {
-      return { data: { success: false } };
+  async deleteRole(id: string): Promise<SingleResponse<Role>> {
+    const role = await this.prisma.role.findUnique({
+      where: { id },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: true,
+          },
+        },
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${id} not found`);
     }
+
+    await this.prisma.role.delete({ where: { id } });
+
+    return { data: this.mapRole(role) };
   }
 
   async findAllPermissions(): Promise<ListResponse<Permission>> {
@@ -136,7 +185,7 @@ export class RolesService {
     try {
       await this.prisma.permission.delete({ where: { id } });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -153,7 +202,7 @@ export class RolesService {
         },
       });
       return { data: { removed: result.count > 0 } };
-    } catch (error) {
+    } catch {
       return { data: { removed: false } };
     }
   }

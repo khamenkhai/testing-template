@@ -17,6 +17,12 @@ import { ApiSwaggerSingleResponse } from 'src/common/decorators/api-response.dec
 import type { SingleResponse } from 'src/common/interfaces/api-response.interface';
 import { AuthenticatedUser } from './types/auth-request.interface';
 import { User } from 'src/database/generated/prisma/client';
+import {
+  AuthLoginResponseDto,
+  AuthTokenPairResponseDto,
+  MessageResponseDto,
+  UserResponseDto,
+} from 'src/common/dto/response.dto';
 
 @ApiTags('Auth')
 @Controller('')
@@ -24,7 +30,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(UserResponseDto)
   @Post('register')
   @ResponseMessage('User successfully registered')
   async register(
@@ -34,21 +40,21 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Login user' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(AuthLoginResponseDto)
   @Post('login')
   @ResponseMessage('User successfully logged in')
   async login(@Body() loginDto: LoginDto): Promise<
     SingleResponse<{
       access_token: string;
       refresh_token: string;
-      user: { id: string; email: string; role: any };
+      user: AuthenticatedUser;
     }>
   > {
     return await this.authService.login(loginDto.email, loginDto.password);
   }
 
   @ApiOperation({ summary: 'Refresh access token' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(AuthTokenPairResponseDto)
   @Post('refresh')
   @ResponseMessage('Token successfully refreshed')
   async refresh(
@@ -60,7 +66,7 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Logout user' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(MessageResponseDto)
   @Post('logout')
   @ResponseMessage('User successfully logged out')
   async logout(@Request() req): Promise<SingleResponse<{ message: string }>> {

@@ -1,79 +1,82 @@
-// src/common/decorators/api-swagger-response.decorator.ts
 import { applyDecorators, Type } from '@nestjs/common';
 import { ApiExtraModels, ApiOkResponse, getSchemaPath } from '@nestjs/swagger';
+import { ApiResponseDto, PaginationMetaDto } from '../dto/response.dto';
 
-// --- 1. Single Item Response Decorator ---
-export const ApiSwaggerSingleResponse = <TModel extends Type<any>>(
+const getSingleResponseSchema = (model: Type<unknown>) => ({
+  allOf: [
+    { $ref: getSchemaPath(ApiResponseDto) },
+    {
+      type: 'object',
+      properties: {
+        data: { $ref: getSchemaPath(model) },
+      },
+    },
+  ],
+});
+
+const getListResponseSchema = (model: Type<unknown>) => ({
+  allOf: [
+    { $ref: getSchemaPath(ApiResponseDto) },
+    {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(model) },
+        },
+      },
+    },
+  ],
+});
+
+const getPaginatedResponseSchema = (model: Type<unknown>) => ({
+  allOf: [
+    { $ref: getSchemaPath(ApiResponseDto) },
+    {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(model) },
+        },
+        meta: { $ref: getSchemaPath(PaginationMetaDto) },
+      },
+    },
+  ],
+});
+
+export const ApiSwaggerSingleResponse = <TModel extends Type<unknown>>(
   model: TModel,
 ) => {
   return applyDecorators(
-    ApiExtraModels(model),
+    ApiExtraModels(ApiResponseDto, model),
     ApiOkResponse({
       description: 'Successfully retrieved single record.',
-      schema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Request successful' },
-          data: { $ref: getSchemaPath(model) },
-        },
-      },
+      schema: getSingleResponseSchema(model),
     }),
   );
 };
 
-// --- 2. List (Array) Response Decorator ---
-export const ApiSwaggerListResponse = <TModel extends Type<any>>(
+export const ApiSwaggerListResponse = <TModel extends Type<unknown>>(
   model: TModel,
 ) => {
   return applyDecorators(
-    ApiExtraModels(model),
+    ApiExtraModels(ApiResponseDto, model),
     ApiOkResponse({
       description: 'Successfully retrieved list of records.',
-      schema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Request successful' },
-          data: {
-            type: 'array',
-            items: { $ref: getSchemaPath(model) },
-          },
-        },
-      },
+      schema: getListResponseSchema(model),
     }),
   );
 };
 
-// --- 3. Paginated Response Decorator ---
-export const ApiSwaggerPaginatedResponse = <TModel extends Type<any>>(
+export const ApiSwaggerPaginatedResponse = <TModel extends Type<unknown>>(
   model: TModel,
 ) => {
   return applyDecorators(
-    ApiExtraModels(model),
+    ApiExtraModels(ApiResponseDto, PaginationMetaDto, model),
     ApiOkResponse({
       description: 'Successfully retrieved paginated records.',
-      schema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Request successful' },
-          data: {
-            type: 'array',
-            items: { $ref: getSchemaPath(model) },
-          },
-          meta: {
-            type: 'object',
-            properties: {
-              totalItems: { type: 'number', example: 100 },
-              itemCount: { type: 'number', example: 10 },
-              itemsPerPage: { type: 'number', example: 10 },
-              totalPages: { type: 'number', example: 10 },
-              currentPage: { type: 'number', example: 1 },
-            },
-          },
-        },
-      },
+      schema: getPaginatedResponseSchema(model),
     }),
   );
 };
