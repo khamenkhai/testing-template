@@ -35,16 +35,20 @@ import type {
   PaginatedResponse,
 } from 'src/common/interfaces/api-response.interface';
 import { Todo } from 'src/database/generated/prisma/client';
+import {
+  IdSuccessResponseDto,
+  TodoResponseDto,
+} from 'src/common/dto/response.dto';
 
 @ApiTags('Todo')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('')
 export class TodoController {
-  constructor(private readonly todoService: TodoService) { }
+  constructor(private readonly todoService: TodoService) {}
 
   @ApiOperation({ summary: 'Create a new todo' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(TodoResponseDto)
   @Post()
   @RequirePermissions('todo.create')
   @ResponseMessage('Created Todo Successfully!')
@@ -56,7 +60,7 @@ export class TodoController {
   }
 
   @ApiOperation({ summary: 'Get all todos for the current user' })
-  @ApiSwaggerPaginatedResponse(Object)
+  @ApiSwaggerPaginatedResponse(TodoResponseDto)
   @Get()
   @RequirePermissions('todo.read')
   @ResponseMessage('Fetched All Todos Successfully')
@@ -69,7 +73,7 @@ export class TodoController {
   }
 
   @ApiOperation({ summary: 'Get a specific todo by ID' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(TodoResponseDto)
   @Get(':id')
   @RequirePermissions('todo.read')
   @ResponseMessage('Fetched Todo Details Successfully')
@@ -81,7 +85,7 @@ export class TodoController {
   }
 
   @ApiOperation({ summary: 'Update a specific todo by ID' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(TodoResponseDto)
   @Patch(':id')
   @RequirePermissions('todo.update')
   @ResponseMessage('Updated Todo Successfully')
@@ -94,7 +98,7 @@ export class TodoController {
   }
 
   @ApiOperation({ summary: 'Delete a specific todo by ID' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(IdSuccessResponseDto)
   @Delete(':id')
   @RequirePermissions('todo.delete')
   @ResponseMessage('Deleted Todo Successfully')
@@ -108,7 +112,7 @@ export class TodoController {
   @ApiOperation({
     summary: 'Create todo with an image (form-data)',
   })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(TodoResponseDto)
   @ApiConsumes('multipart/form-data')
   @RequirePermissions('todo.create')
   @ApiBody({

@@ -11,6 +11,7 @@ import { CreateUserDto } from '../users/dto/create-user.dto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { SingleResponse } from 'src/common/interfaces/api-response.interface';
+import { AuthenticatedUser } from './types/auth-request.interface';
 
 @Injectable()
 export class AuthService {
@@ -49,7 +50,7 @@ export class AuthService {
   }
 
   // Helper to build payload with fresh permissions
-  private async buildJwtPayload(user: any): Promise<JwtPayload> {
+  private buildJwtPayload(user: any): JwtPayload {
     const permissions =
       user.role?.rolePermissions?.map((rp: any) => rp.permission.name) || [];
 
@@ -62,7 +63,16 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<
+    SingleResponse<{
+      access_token: string;
+      refresh_token: string;
+      user: AuthenticatedUser;
+    }>
+  > {
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -96,7 +106,7 @@ export class AuthService {
       throw new Error('JWT secrets are not configured');
     }
 
-    const payload = await this.buildJwtPayload(user);
+    const payload = this.buildJwtPayload(user);
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -122,7 +132,9 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          role: user.role,
+          roleId: payload.roleId,
+          roleName: payload.roleName,
+          permissions: payload.permissions,
         },
       },
     };
@@ -173,7 +185,7 @@ export class AuthService {
       if (!accessTokenSecret)
         throw new Error('JWT access secret is not configured');
 
-      const newPayload = await this.buildJwtPayload(user);
+      const newPayload = this.buildJwtPayload(user);
 
       const newAccessToken = await this.jwtService.signAsync(newPayload, {
         secret: accessTokenSecret,
@@ -197,7 +209,7 @@ export class AuthService {
           refresh_token: newRefreshToken,
         },
       };
-    } catch (e) {
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

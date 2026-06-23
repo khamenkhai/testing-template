@@ -12,6 +12,7 @@ import { ResponseMessage } from 'src/common/decorators/response-message.decorato
 import { ApiSwaggerSingleResponse } from 'src/common/decorators/api-response.decorator';
 import type { SingleResponse } from 'src/common/interfaces/api-response.interface';
 import { User } from 'src/database/generated/prisma/client';
+import { UserResponseDto } from 'src/common/dto/response.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -21,7 +22,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Assign a role to a user' })
-  @ApiSwaggerSingleResponse(Object)
+  @ApiSwaggerSingleResponse(UserResponseDto)
   @Patch(':id/role')
   @ApiParam({ name: 'id', description: 'User ID' })
   @ResponseMessage('Role assigned successfully')

@@ -33,12 +33,15 @@ export class UsersService {
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
         role: true,
       },
     });
+
+  
+    return user;
   }
 
   async update(id: string, updateUserDto: Partial<User>): Promise<void> {
