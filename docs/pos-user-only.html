@@ -1,0 +1,1372 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <title>POS DB Schema - Variants + Analytics</title>
+
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+      mermaid.initialize({
+        startOnLoad: true,
+
+        theme: 'dark',
+      });
+    </script>
+
+    <style>
+      body {
+        background: #0f0f0f;
+
+        color: #ffffff;
+
+        font-family: Arial, sans-serif;
+
+        margin: 0;
+
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 18px;
+
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 15px;
+
+        margin: 0 0 12px 0;
+
+        color: #aaa;
+      }
+
+      .box {
+        background: #1a1a1a;
+
+        padding: 18px;
+
+        border-radius: 12px;
+
+        border: 1px solid #333;
+
+        margin-bottom: 24px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>POS System - Variant Based + Sales Analytics Architecture</h1>
+
+    <div class="box">
+      <h2>Part 1: Organization, Users &amp; RBAC</h2>
+
+      <pre class="mermaid">
+
+erDiagram
+
+
+
+  ORGANIZATIONS ||--o{ BRANCHES : has
+
+  ORGANIZATIONS ||--o{ STORES : operates
+
+  ORGANIZATIONS ||--o{ USERS : owns
+
+  ORGANIZATIONS ||--o{ ROLES : defines
+
+
+
+  BRANCHES ||--o{ TABLES : contains
+
+
+
+  USERS ||--o{ BRANCH_ASSIGN : has
+
+  BRANCHES ||--o{ BRANCH_ASSIGN : assigned_to
+
+  ROLES ||--o{ BRANCH_ASSIGN : assigned
+
+
+
+  USERS ||--o{ SHIFTS : works
+
+  USERS ||--o{ EXPENSES : creates
+
+  USERS ||--o{ AUDIT_LOGS : generates
+
+
+
+  ORGANIZATIONS ||--o{ ORG_CATEGORIES : defines
+
+  ORG_CATEGORIES ||--o{ ORG_PRODUCTS : groups
+
+
+
+  ROLES ||--o{ ROLE_PERMISSIONS : has
+
+  PERMISSIONS ||--o{ ROLE_PERMISSIONS : has
+
+
+
+  ORGANIZATIONS {
+
+    int id PK
+
+    string name
+
+    string subdomain
+
+    string logo_key
+
+    timestamp created_at
+
+  }
+
+
+
+  STORES {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string code
+
+    string status
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  BRANCHES {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string address
+
+    string business_type
+
+    decimal lat
+
+    decimal lng
+
+    string image_key
+
+    string photo_url
+
+    int cash_rounding_unit
+
+    string cash_rounding_rule
+
+    boolean tax_inclusive
+
+    decimal default_tax_rate
+
+    timestamp created_at
+
+  }
+
+
+
+  USERS {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string email
+
+    string password_hash
+
+    string user_type
+
+    boolean is_active
+
+    timestamp created_at
+
+  }
+
+
+
+  BRANCH_ASSIGN {
+
+    int id PK
+
+    int user_id FK
+
+    int role_id FK
+
+    int branch_id FK
+
+    string pin_hash
+
+    string pin_salt
+
+    boolean is_active
+
+    timestamp created_at
+
+  }
+
+
+
+  ROLES {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string description
+
+    boolean is_active
+
+  }
+
+
+
+  PERMISSIONS {
+
+    int id PK
+
+    string module
+
+    string scope
+
+    string description
+
+  }
+
+
+
+  ROLE_PERMISSIONS {
+
+    int id PK
+
+    int role_id FK
+
+    int permission_id FK
+
+  }
+
+
+
+  TABLES {
+
+    int id PK
+
+    int branch_id FK
+
+    string table_number
+
+    int seating_capacity
+
+    string status
+
+  }
+
+
+
+  ORG_CATEGORIES {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string description
+
+    boolean is_active
+
+  }
+
+
+
+  ORG_PRODUCTS {
+
+    int id PK
+
+    int organization_id FK
+
+    int category_id FK
+
+    string name
+
+    string description
+
+    boolean is_active
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+</pre
+      >
+    </div>
+
+    <div class="box">
+      <h2>Part 2: Products, Categories &amp; Inventory</h2>
+
+      <pre class="mermaid">
+
+erDiagram
+
+
+
+  ORG_CATEGORIES ||--o{ BRANCH_CATEGORIES : parent
+
+
+
+  BRANCHES ||--o{ BRANCH_CATEGORIES : defines
+
+  BRANCH_CATEGORIES ||--o{ BRANCH_CATEGORIES : parent
+
+  BRANCH_CATEGORIES ||--o{ BRANCH_PRODUCTS : categorizes
+
+
+
+  ORG_PRODUCTS ||--o{ PRODUCT_VARIANTS : has
+
+  ORG_PRODUCTS ||--o{ BRANCH_PRODUCTS : mapped_to
+
+  BRANCHES ||--o{ BRANCH_PRODUCTS : owns
+
+  BRANCH_PRODUCTS ||--o{ PRODUCT_VARIANTS : sells_as
+
+  PRODUCT_VARIANTS ||--o{ PRICE_HISTORY : tracks
+
+  UOM ||--o{ PRODUCT_VARIANTS : uom
+
+
+
+  BRANCHES ||--o{ INVENTORY_STOCK : holds
+
+  BRANCHES ||--o{ INVENTORY_MOVEMENTS : tracks
+
+  PRODUCT_VARIANTS ||--o{ INVENTORY_STOCK : stocked_as
+
+  PRODUCT_VARIANTS ||--o{ INVENTORY_MOVEMENTS : moves
+
+  INVENTORY_STOCK ||--o{ INVENTORY_MOVEMENTS : updated_by
+
+
+
+  ORGANIZATIONS ||--o{ ORG_SUPPLIERS : has
+
+  ORG_SUPPLIERS ||--o{ PURCHASE_ORDERS : supplies
+
+  BRANCHES ||--o{ PURCHASE_ORDERS : buys
+
+  PURCHASE_ORDERS ||--o{ PURCHASE_ORDER_ITEMS : contains
+
+  PURCHASE_ORDER_ITEMS }o--|| PRODUCT_VARIANTS : buys
+
+
+
+  BRANCHES ||--o{ PURCHASE_RECEIPTS : receives
+
+  PURCHASE_ORDERS ||--o{ PURCHASE_RECEIPTS : received_as
+
+  PURCHASE_RECEIPTS ||--o{ PURCHASE_RECEIPT_ITEMS : contains
+
+  PURCHASE_ORDER_ITEMS ||--o{ PURCHASE_RECEIPT_ITEMS : fulfills
+
+  PURCHASE_RECEIPT_ITEMS }o--|| PRODUCT_VARIANTS : receives
+
+  PURCHASE_RECEIPT_ITEMS ||--o{ INVENTORY_MOVEMENTS : receives
+
+
+
+  BRANCHES ||--o{ STOCK_TRANSFERS : sends
+
+  BRANCHES ||--o{ STOCK_TRANSFERS : receives
+
+  STOCK_TRANSFERS ||--o{ STOCK_TRANSFER_ITEMS : contains
+
+  STOCK_TRANSFER_ITEMS }o--|| PRODUCT_VARIANTS : transfers
+
+  STOCK_TRANSFER_ITEMS ||--o{ INVENTORY_MOVEMENTS : generates
+
+
+
+  WASTE_RECORDS ||--o{ INVENTORY_MOVEMENTS : generates
+
+
+
+  BRANCH_CATEGORIES {
+
+    int id PK
+
+    int branch_id FK
+
+    int org_category_id FK
+
+    int parent_id FK
+
+    string name
+
+    string description
+
+    boolean is_active
+
+    timestamp created_at
+
+  }
+
+
+
+  BRANCH_PRODUCTS {
+
+    int id PK
+
+    int branch_id FK
+
+    int product_id FK
+
+    int branch_category_id FK
+
+    string display_name
+
+    boolean is_available
+
+    boolean is_featured
+
+    string pos_display_order
+
+    string kitchen_station
+
+    int preparation_time_minutes
+
+    json custom_attributes
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  PRODUCT_VARIANTS {
+
+    int id PK
+
+    int product_id FK
+
+    string name
+
+    string sku
+
+    string barcode
+
+    decimal price
+
+    decimal cost
+
+    decimal wholesale_price
+
+    int wholesale_price_effective_qty
+
+    int uom_id FK
+
+    int base_uom_id FK
+
+    decimal conversion_factor
+
+    decimal base_unit_qty
+
+    boolean track_inventory
+
+    int low_stock_alert_qty
+
+    int reorder_point
+
+    int reorder_quantity
+
+  }
+
+
+
+  UOM {
+
+    int id PK
+
+    string name
+
+    string symbol
+
+    boolean is_base_unit
+
+    boolean is_weight
+
+  }
+
+
+
+  INVENTORY_STOCK {
+
+    int id PK
+
+    int branch_id FK
+
+    int variant_id FK
+
+    decimal quantity_on_hand
+
+    decimal reserved_qty
+
+  }
+
+
+
+  INVENTORY_MOVEMENTS {
+
+    int id PK
+
+    int branch_id FK
+
+    int variant_id FK
+
+    string movement_type
+
+    string movement_direction
+
+    string reason_code
+
+    decimal quantity
+
+    decimal previous_qty
+
+    decimal new_qty
+
+    string reference_type
+
+    int reference_id
+
+    int purchase_item_id FK
+
+    int receipt_item_id FK
+
+    int waste_record_id FK
+
+    timestamp created_at
+
+  }
+
+
+
+  ORG_SUPPLIERS {
+
+    int id PK
+
+    int organization_id FK
+
+    string name
+
+    string contact_person
+
+    string email
+
+    string phone
+
+    string address
+
+    string payment_terms
+
+    boolean is_active
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  PURCHASE_ORDERS {
+
+    int id PK
+
+    int branch_id FK
+
+    int supplier_id FK
+
+    decimal total_cost
+
+    string status
+
+    date expected_delivery
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  PURCHASE_ORDER_ITEMS {
+
+    int id PK
+
+    int purchase_order_id FK
+
+    int variant_id FK
+
+    decimal quantity_ordered
+
+    decimal quantity_received
+
+    decimal cost_price
+
+  }
+
+
+
+  PURCHASE_RECEIPTS {
+
+    int id PK
+
+    int purchase_order_id FK
+
+    int branch_id FK
+
+    int received_by FK
+
+    string status
+
+    text notes
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  PURCHASE_RECEIPT_ITEMS {
+
+    int id PK
+
+    int purchase_receipt_id FK
+
+    int purchase_order_item_id FK
+
+    int variant_id FK
+
+    decimal quantity_received
+
+    timestamp created_at
+
+  }
+
+
+
+  STOCK_TRANSFERS {
+
+    int id PK
+
+    int source_branch_id FK
+
+    int destination_branch_id FK
+
+    int requested_by FK
+
+    string status
+
+    text notes
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  STOCK_TRANSFER_ITEMS {
+
+    int id PK
+
+    int stock_transfer_id FK
+
+    int variant_id FK
+
+    decimal quantity
+
+    decimal quantity_received
+
+  }
+
+
+
+  WASTE_RECORDS {
+
+    int id PK
+
+    int branch_id FK
+
+    int variant_id FK
+
+    decimal quantity
+
+    string reason
+
+    decimal cost
+
+    int recorded_by FK
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  PRICE_HISTORY {
+
+    int id PK
+
+    int variant_id FK
+
+    decimal price
+
+    timestamp effective_from
+
+    timestamp effective_to
+
+  }
+
+</pre
+      >
+    </div>
+
+    <div class="box">
+      <h2>Part 3: Sales, Payments &amp; Operations</h2>
+
+      <pre class="mermaid">
+
+erDiagram
+
+
+
+  BRANCHES ||--o{ SALES : processes
+
+  USERS ||--o{ SALES : creates
+
+  CUSTOMERS ||--o{ SALES : makes
+
+  TABLES ||--o{ SALES : assigned_to
+
+
+
+  SALES ||--o{ SALE_ITEMS : contains
+
+  ORG_PRODUCTS ||--o{ SALE_ITEMS : product
+
+  PRODUCT_VARIANTS ||--o{ SALE_ITEMS : sold_as
+
+
+
+  PAYMENT_METHODS ||--o{ BRANCH_PAYMENT_METHODS : defines
+
+  BRANCHES ||--o{ BRANCH_PAYMENT_METHODS : supports
+
+  BRANCH_PAYMENT_METHODS ||--o{ PAYMENTS : used_in
+
+  SALES ||--o{ PAYMENTS : paid_by
+
+
+
+  BRANCHES ||--o{ SALES_DAILY_SUMMARIES : aggregates
+
+  BRANCHES ||--o{ EXPENSES : records
+
+  SHIFTS ||--o{ CASH_DRAWER_TRANSACTIONS : tracks
+
+  BRANCHES ||--o{ AUDIT_LOGS : logs
+
+
+
+  SALES {
+
+    int id PK
+
+    int branch_id FK
+
+    int table_id FK
+
+    int user_id FK
+
+    int customer_id FK
+
+    string order_type
+
+    string order_channel
+
+    decimal subtotal
+
+    decimal tax_rate
+
+    decimal tax_amount
+
+    decimal discount_amount
+
+    decimal total_amount
+
+    decimal rounding_amount
+
+    decimal rounded_amount
+
+    decimal cash_paid_amount
+
+    decimal digital_paid_amount
+
+    decimal change_amount
+
+    string digital_payment_id
+
+    int created_by FK
+
+    int updated_by FK
+
+    timestamp created_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  SALE_ITEMS {
+
+    int id PK
+
+    int sale_id FK
+
+    int product_id FK
+
+    int variant_id FK
+
+    int quantity
+
+    decimal price_at_sale
+
+    decimal line_total
+
+    string kitchen_status
+
+    string kitchen_station
+
+    text notes
+
+  }
+
+
+
+  CUSTOMERS {
+
+    int id PK
+
+    string name
+
+    string phone
+
+    string email
+
+    decimal total_spent
+
+    int visit_count
+
+    timestamp created_at
+
+  }
+
+
+
+  PAYMENT_METHODS {
+
+    int id PK
+
+    string name
+
+    string code
+
+    boolean is_active
+
+  }
+
+
+
+  BRANCH_PAYMENT_METHODS {
+
+    int id PK
+
+    int branch_id FK
+
+    int payment_method_id FK
+
+    boolean is_active
+
+    timestamp created_at
+
+  }
+
+
+
+  PAYMENTS {
+
+    int id PK
+
+    int sale_id FK
+
+    int branch_payment_method_id FK
+
+    decimal amount
+
+    string transaction_id
+
+    string status
+
+    timestamp created_at
+
+  }
+
+
+
+  SALES_DAILY_SUMMARIES {
+
+    int id PK
+
+    int branch_id FK
+
+    date summary_date
+
+    decimal total_sales
+
+    int total_orders
+
+    decimal avg_order_value
+
+  }
+
+
+
+  SHIFTS {
+
+    int id PK
+
+    int user_id FK
+
+    int branch_id FK
+
+    timestamp started_at
+
+    timestamp ended_at
+
+    decimal opening_cash
+
+    decimal closing_cash
+
+  }
+
+
+
+  CASH_DRAWER_TRANSACTIONS {
+
+    int id PK
+
+    int shift_id FK
+
+    int branch_id FK
+
+    string type
+
+    decimal amount
+
+    decimal running_balance
+
+    text notes
+
+    int created_by FK
+
+    timestamp created_at
+
+  }
+
+
+
+  EXPENSES {
+
+    int id PK
+
+    int branch_id FK
+
+    int user_id FK
+
+    string title
+
+    decimal amount
+
+    timestamp created_at
+
+  }
+
+
+
+  AUDIT_LOGS {
+
+    bigint id PK
+
+    int organization_id FK
+
+    int branch_id FK
+
+    int user_id FK
+
+    string action
+
+    string entity_type
+
+    int entity_id
+
+    json old_values
+
+    json new_values
+
+    timestamp created_at
+
+  }
+
+</pre
+      >
+    </div>
+
+    <div class="box">
+      <h2>Part 4: Subscriptions &amp; Feature Management</h2>
+
+      <pre class="mermaid">
+
+erDiagram
+
+
+
+  SUBSCRIPTION_PLANS ||--o{ STORE_SUBSCRIPTIONS : offers
+
+  STORES ||--o{ STORE_SUBSCRIPTIONS : subscribes
+
+
+
+  SUBSCRIPTION_PLANS {
+
+    int id PK
+
+    string name
+
+    text description
+
+    int durationDays
+
+    boolean isFree
+
+    int price
+
+    string status
+
+    timestamp created_at
+
+    int created_by
+
+    timestamp updated_at
+
+    int updated_by
+
+    int created_by_admin
+
+    int updated_by_admin
+
+  }
+
+
+
+  STORE_SUBSCRIPTIONS {
+
+    int id PK
+
+    int store_id FK
+
+    int plan_id FK
+
+    string status
+
+    timestamp starts_at
+
+    timestamp expires_at
+
+    timestamp created_at
+
+    int created_by
+
+    timestamp updated_at
+
+    int updated_by
+
+    int created_by_admin
+
+    int updated_by_admin
+
+  }
+
+</pre
+      >
+    </div>
+
+    <div class="box">
+      <h2>Part 5: Sync Architecture</h2>
+
+      <pre class="mermaid">
+
+erDiagram
+
+
+
+  ORGANIZATIONS ||--o{ DEVICES : owns
+
+  STORES ||--o{ DEVICES : assigned_to
+
+  DEVICES ||--o| DEVICE_SYNC_STATE : has
+
+  DEVICES ||--o{ DEVICE_HEARTBEATS : sends
+
+  DEVICES ||--o{ DEVICE_INBOX : receives
+
+
+
+  ORGANIZATIONS ||--o{ CHANGE_LOGS : generates
+
+  STORES ||--o{ CHANGE_LOGS : scoped_to
+
+
+
+  ORGANIZATIONS ||--o{ DEVICE_INBOX : routes
+
+  STORES ||--o{ DEVICE_INBOX : routes
+
+  DEVICE_INBOX }o--|| DEVICES : belongs_to
+
+
+
+  ORGANIZATIONS ||--o{ DEVICE_SYNC_STATE : tracks
+
+  STORES ||--o{ DEVICE_SYNC_STATE : tracks
+
+
+
+  DEVICES {
+
+    int id PK
+
+    int organization_id FK
+
+    int store_id FK
+
+    string device_code
+
+    string device_name
+
+    string platform
+
+    string app_version
+
+    int sync_schema_version
+
+    string status
+
+    timestamp registered_at
+
+    timestamp updated_at
+
+  }
+
+
+
+  DEVICE_SYNC_STATE {
+
+    int device_id PK,FK
+
+    int organization_id FK
+
+    int store_id FK
+
+    bigint last_server_cursor_sent
+
+    bigint last_server_cursor_acknowledged
+
+    bigint last_local_sequence_received
+
+    timestamp last_pull_at
+
+    timestamp last_ack_at
+
+    timestamp last_push_at
+
+    timestamp last_heartbeat_at
+
+    string sync_status
+
+    string last_error_code
+
+    string last_error_message
+
+    timestamp updated_at
+
+  }
+
+
+
+  CHANGE_LOGS {
+
+    bigint server_sequence PK
+
+    int organization_id FK
+
+    int store_id FK
+
+    string entity_type
+
+    string entity_id
+
+    string operation
+
+    int payload_version
+
+    json payload_json
+
+    string source
+
+    string source_event_id
+
+    timestamp created_at
+
+  }
+
+
+
+  DEVICE_INBOX {
+
+    uuid server_event_id PK
+
+    uuid client_event_id
+
+    string idempotency_key UK
+
+    int organization_id FK
+
+    int store_id FK
+
+    int device_id FK
+
+    string cashier_id
+
+    bigint local_sequence
+
+    string event_type
+
+    string aggregate_type
+
+    string aggregate_id
+
+    int payload_version
+
+    json payload_json
+
+    string payload_hash
+
+    string status
+
+    string validation_error
+
+    timestamp created_at_device
+
+    timestamp received_at_server
+
+    timestamp processed_at_server
+
+  }
+
+
+
+  DEVICE_HEARTBEATS {
+
+    bigint heartbeat_id PK
+
+    int organization_id FK
+
+    int store_id FK
+
+    int device_id FK
+
+    string app_version
+
+    int pending_outbox_count
+
+    bigint last_known_server_cursor
+
+    bigint last_local_sequence
+
+    json metadata_json
+
+    timestamp created_at
+
+  }
+
+</pre
+      >
+    </div>
+  </body>
+</html>

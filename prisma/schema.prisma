@@ -1,0 +1,86 @@
+// ============================================
+// NestJS Prisma Starter Kit
+// ============================================
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/database/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// AUTH & ACCESS CONTROL
+// ==========================================
+
+model Permission {
+  id          String    @id @default(uuid(7))
+  name        String    @unique
+  description String?
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id        String    @id @default(uuid(7))
+  name      String    @unique
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+  users           User[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid(7))
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@map("role_permission")
+}
+
+model User {
+  id           String    @id @default(uuid(7))
+  username     String    @db.VarChar(100)
+  email        String    @unique @db.VarChar(150)
+  password     String?   @db.VarChar(255)
+  refreshToken String?   @map("refresh_token")
+  roleId       String?   @map("role_id")
+  role         Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime? @updatedAt @map("updated_at")
+
+  todos Todo[]
+
+  @@map("users")
+}
+
+model Todo {
+  id          String  @id @default(uuid(7))
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  isCompleted Boolean @default(false) @map("is_completed")
+  image       String?
+  userId      String? @map("user_id")
+  user        User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  @@map("todos")
+}
